@@ -19,9 +19,18 @@ export default function Home() {
   const imageRef = useRef(null);
   const canvasRef = useRef(null);
 
+  const previewCanvasRef = useRef(null);
+  const hiddenAnchorRef = useRef(null);
+  const blobUrlRef = useRef(null);
+
   useEffect(() => {
     console.log(completedCrop);
-  }, [completedCrop])
+  }, [completedCrop]);
+  useEffect(() => {
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+    }
+  }, []);
   // Cargar la imagen
   const handleImageChange = (e) => {
     setCrop(undefined)
@@ -29,6 +38,7 @@ export default function Home() {
     if (file[0]) {
       setImage(file);
       setPreview(URL.createObjectURL(file[0]));
+      setCrop(undefined);
     }
   };
   // Escalar la imagen para el recorte
@@ -68,17 +78,16 @@ export default function Home() {
     }
   };
 
-  const cropImage = () => {
-    if (!completedCrop || !canvasRef.current || !imageRef.current) return;
+  const cropImage = async () => {
+    if (!completedCrop || !imageRef.current) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
     const image = imageRef.current;
+
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
 
-    canvas.width = completedCrop.width;
-    canvas.height = completedCrop.height;
+    const offscreen = new OffscreenCanvas(widthCrop, heightCrop);
+    const ctx = offscreen.getContext("2d");
 
     ctx.drawImage(
       image,
@@ -88,27 +97,30 @@ export default function Home() {
       completedCrop.height * scaleY,
       0,
       0,
-      completedCrop.width,
-      completedCrop.height
+      widthCrop,
+      heightCrop
     );
 
-    // Generar una URL de imagen recortada
-    const croppedURL = canvas.toDataURL("image/png");
-    setCroppedImage(croppedURL);
+    const blob = await offscreen.convertToBlob({ type: "image/png" });
+
+    const url = URL.createObjectURL(blob);
+    setCroppedImage(url);
+
+    blobUrlRef.current = url;
   };
 
   const downloadImage = () => {
-    if (!croppedImage) return;
-    const link = document.createElement("a");
-    link.href = croppedImage;
-    link.download = "cropped-image.png";
-    link.click();
+    if (!blobUrlRef.current || !hiddenAnchorRef.current) return;
+
+    hiddenAnchorRef.current.href = blobUrlRef.current;
+    hiddenAnchorRef.current.download = "cropped-image.png";
+    hiddenAnchorRef.current.click();
   };
 
   return (
     <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-gray-100">
       <h1 className="text-2xl font-bold mb-4">Redimensionar Imágenes</h1>
-      <div className="bg-white p-6 rounded-lg shadow-md w-full">
+      <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-md">
         <div className="mb-4">
           <label className="block text-sm font-medium text-gray-700">
             Selecciona una imagen
@@ -157,7 +169,7 @@ export default function Home() {
               type="number"
               defaultValue={size.widthCrop}
               onChange={(e) => {
-                setsetWidthCropsetWidthCropsetWidthCrop(e.target.value)
+                setWidthCrop(e.target.value)
                 setSize({ ...size, widthCrop: e.target.value })
               }}
               className="mt-1 block w-full border-gray-300 rounded-md"
@@ -214,6 +226,9 @@ export default function Home() {
             >
               Descargar Imagen
             </button>
+            <a ref={hiddenAnchorRef} style={{ display: "none" }}>
+              Descargar
+            </a>
           </div>
         )}
 
