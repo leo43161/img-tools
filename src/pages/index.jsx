@@ -148,6 +148,7 @@ export default function Home() {
                   onComplete={(c) => setCompletedCrop(c)}
                 >
                   <img
+                    ref={imageRef}
                     src={result}
                     alt="Resized"
                     className="w-full h-auto"
@@ -191,6 +192,13 @@ export default function Home() {
           </div>
         </div>
 
+        <button
+          onClick={handleResize}
+          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 mb-4"
+        >
+          Redimensionar
+        </button>
+
         {completedCrop && (
           <>
             <div className="mt-4 mb-3">
@@ -203,14 +211,6 @@ export default function Home() {
             </div>
           </>
         )}
-
-
-        <button
-          onClick={handleResize}
-          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 mb-4"
-        >
-          Redimensionar
-        </button>
 
         {croppedImage && (
           <div className="mb-4">
