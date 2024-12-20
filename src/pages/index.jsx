@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css'
 import { canvasPreview } from "@/components/canvasPreview";
+import { compressImage } from "./helpers/imageHelpers";
 
 export default function Home() {
   const [crop, setCrop] = useState();
@@ -70,7 +71,7 @@ export default function Home() {
     });
     //Rescatar la imagen redimensionada
     const data = await res.json();
-    /* console.log(data); */
+    console.log(data);
     if (data.success) {
       setResult(data.image[0]);
     } else {
@@ -83,12 +84,26 @@ export default function Home() {
 
     const image = imageRef.current;
 
+    // Obtén las escalas basadas en las dimensiones naturales
     const scaleX = image.naturalWidth / image.width;
     const scaleY = image.naturalHeight / image.height;
 
-    const offscreen = new OffscreenCanvas(widthCrop, heightCrop);
+    // Crea un lienzo con las dimensiones fijas deseadas
+    const offscreen = new OffscreenCanvas(size.widthCrop, size.heightCrop);
     const ctx = offscreen.getContext("2d");
 
+    // Ajusta el dibujo para encajar en las dimensiones deseadas
+    console.log(`ctx.drawImage(
+      ${image},
+      ${completedCrop.x * scaleX},
+      ${completedCrop.y * scaleY},
+      ${completedCrop.width * scaleX},
+      ${completedCrop.height * scaleY},
+      ${0},
+      ${0},
+      ${size.widthCrop}, // Redimensiona al ancho exacto deseado
+      ${size.heightCrop} // Redimensiona al alto exacto deseado
+    );`)
     ctx.drawImage(
       image,
       completedCrop.x * scaleX,
@@ -97,23 +112,40 @@ export default function Home() {
       completedCrop.height * scaleY,
       0,
       0,
-      widthCrop,
-      heightCrop
+      size.widthCrop, // Redimensiona al ancho exacto deseado
+      size.heightCrop // Redimensiona al alto exacto deseado
     );
 
-    const blob = await offscreen.convertToBlob({ type: "image/png" });
+    // Convierte el lienzo a un Blob con las dimensiones deseadas
+    const blob = await offscreen.convertToBlob({ type: "image/jpeg", quality: 1 });
+    console.log(blob);
+    // Crear un archivo a partir del blob para usar con el compresor
+    const file = new File([blob], "cropped-image.jpeg", { type: "image/jpeg" });
 
-    const url = URL.createObjectURL(blob);
-    setCroppedImage(url);
+    console.log(file);
+    
+    // Comprimir la imagen
+    const imageCropped = file.size < 100000 ? file : await compressImage(file);
+    console.log(imageCropped);
+    console.log(typeof imageCropped);
+    if (imageCropped) {
+      // Genera un URL para la imagen recortada
+      const url = URL.createObjectURL(imageCropped);
+      console.log(url);
+      setCroppedImage(url);
 
-    blobUrlRef.current = url;
+      // Guarda el URL para la descarga
+      blobUrlRef.current = url;
+    } else {
+      console.error("No se pudo comprimir la imagen.");
+    }
   };
 
   const downloadImage = () => {
     if (!blobUrlRef.current || !hiddenAnchorRef.current) return;
 
     hiddenAnchorRef.current.href = blobUrlRef.current;
-    hiddenAnchorRef.current.download = "cropped-image.png";
+    hiddenAnchorRef.current.download = "cropped-image.jpeg";
     hiddenAnchorRef.current.click();
   };
 

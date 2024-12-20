@@ -9,7 +9,7 @@ export const config = {
   },
 };
 
-const bufferToBase64 = (buffer, mimeType = "image/png") => {
+const bufferToBase64 = (buffer, mimeType = "image/jpeg") => {
   const base64 = buffer.toString("base64");
   return `data:${mimeType};base64,${base64}`;
 };
@@ -44,10 +44,15 @@ export default async function handler(req, res) {
           const fileWidth = metadata.width;
           const fileHeight = metadata.height;
           
-          //Se decide que dimensiones se va a redimensionar a la imagen
-          const outputWidth = (fileWidth > width && fileWidth > fileHeight) ? null : (fileWidth > fileHeight) ? null : parseInt(width);
-          const outputHeight = (fileHeight > height && fileHeight > fileWidth) ? null : (fileHeight > fileWidth) ? null : parseInt(height);
+          let outputWidth, outputHeight;
 
+          if (fileWidth / fileHeight > width / height) {
+            outputHeight = parseInt(height);
+            outputWidth = null;
+          } else {
+            outputWidth = parseInt(width);
+            outputHeight = null;
+          }
           const { data, info } = await sharp(inputPath)
             .resize(
               outputWidth,
@@ -57,7 +62,7 @@ export default async function handler(req, res) {
                 position: "center",
               }
             )
-            .jpeg({quality: 100})
+            .jpeg({ quality: 100 })
             .toBuffer({ resolveWithObject: true });
           const imageSrc = bufferToBase64(data, "image/jpeg");
           imagesResized.push(imageSrc);
